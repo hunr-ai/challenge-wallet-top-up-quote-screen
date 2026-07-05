@@ -1,0 +1,5 @@
+/node_modules/
+/report.xml
+/_hunr_hidden/
+/_hunr_visible/
+*.tsbuildinfo
