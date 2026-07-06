@@ -1,43 +1,49 @@
-# Sale Price Tag
+# Wallet Top-Up Quote Screen
 
-A [React Native](https://reactnative.dev) product screen shows a `PriceTag`
-component for each item. When an item is on sale, the tag displays a small
-discount badge like `-25%` next to the price. All of that logic funnels through
-one helper:
+## Product context
+The merchant wallet experience is expanding so sellers can add funds before purchasing inventory. We need a standalone React Native screen where a wallet user can enter a top-up amount, validate it, load their wallet balance and limits, and preview the fee and resulting balance before any money moves.
 
-```ts
-discountLabel(priceCents: number, salePriceCents?: number): string | null
-```
+## User story
+As a wallet user, I want to enter an amount to add to my wallet and see a validated quote before confirming, so that I know the fee and resulting balance before money moves.
 
-## Your task
+## Acceptance criteria
+- Add a shared currency helper in `src/pricing.ts`:
+  - Export `formatCents(cents: number): string`.
+  - Format integer cents as US dollar strings such as `$0.00`, `$12.34`, and `-$5.00`.
+  - Preserve the existing `discountLabel` behavior.
+- Add wallet amount utilities in `src/wallet/amount.ts`:
+  - Export `parseAmountToCents(input: string): number | null`.
+  - Export `validateTopUpAmount(input: string, summary?: WalletSummary): string | null`.
+  - Support trimmed input and an optional leading `$`.
+  - Allow at most two decimal places.
+  - Reject empty, non-numeric, zero, and negative amounts.
+  - Enforce a minimum top-up of `$1.00` and maximum single top-up of `$500.00`.
+  - When a wallet summary is available, reject amounts above `summary.remainingDailyTopUpCents`.
+- Add the wallet API contract in `src/wallet/api.ts`:
+  - Export types `WalletSummary`, `TopUpQuote`, and `WalletApi`.
+  - Export `defaultWalletApi` for use when the screen is not given an injected API.
+- Add `src/AddMoneyScreen.tsx`:
+  - Export named component `AddMoneyScreen`.
+  - Export type `AddMoneyScreenProps` with `{ userId: string; api?: WalletApi }`.
+  - Use `api ?? defaultWalletApi`.
+  - Fetch the wallet summary when the screen mounts and show a loading state while it is pending.
+  - Render an amount `TextInput`, current balance text after load, inline validation/error text, and a quote preview showing fee and resulting balance when available.
+  - Request a `TopUpQuote` only when the user presses the primary button with a currently valid amount.
+  - Disable the primary button while the summary is loading, while the amount is invalid, or while a quote request is in progress.
+  - Surface balance-load and quote failures in user-friendly text, provide a retry path for the balance load, and do not clear the user’s typed amount on failures.
 
-`discountLabel` in `src/pricing.ts` currently always returns `null` (no badge is
-ever shown). Implement it:
+## Constraints
+- Build exactly against these public surfaces and file paths:
+  - `src/pricing.ts`
+  - `src/wallet/amount.ts`
+  - `src/wallet/api.ts`
+  - `src/AddMoneyScreen.tsx`
+- Keep the screen as a React Native implementation suitable for `@testing-library/react-native` interaction.
+- Reuse `formatCents` for wallet currency display instead of duplicating formatting logic.
+- Keep form, loading, success, and error states predictable and easy to follow.
 
-1. **On sale** — when `salePriceCents` is a finite number with
-   `0 <= salePriceCents < priceCents`, return the discount as `-NN%`, where
+## Deliverable
+Submit the implemented files above with deterministic exports and a working `AddMoneyScreen` that integrates the wallet utilities, API contract, async loading, validation, quote preview, and error handling.
 
-   ```ts
-   NN = Math.round(((priceCents - salePriceCents) / priceCents) * 100)
-   ```
-
-   The percentage is **rounded**, not truncated — a 32.5% discount shows as
-   `-33%`, not `-32%`. (Tip: compute the discount from the cents *difference* as
-   shown; `1 - salePriceCents / priceCents` loses precision and can round the
-   wrong way.)
-2. **No discount** — in every other case return `null`: there is no sale at all
-   (`salePriceCents` is `undefined` or `NaN`), the sale price is equal to or
-   higher than the regular price, or the sale price is negative.
-
-The `PriceTag` component renders the badge only when `discountLabel` returns a
-non-null string, so fixing the helper fixes the component too.
-
-## Running it
-
-```bash
-npm install
-npm test        # the visible tests
-```
-
-Hidden tests probe the rounding and the null edges — both on the helper and by
-rendering the component with `@testing-library/react-native`.
+## Time box
+Plan for about 60–90 minutes.
