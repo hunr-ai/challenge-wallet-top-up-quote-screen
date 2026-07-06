@@ -42,8 +42,58 @@ As a wallet user, I want to enter an amount to add to my wallet and see a valida
 - Reuse `formatCents` for wallet currency display instead of duplicating formatting logic.
 - Keep form, loading, success, and error states predictable and easy to follow.
 
+## Exact contract — types, API shapes, strings, and accessibility
+
+Our automated checks assert these **exact** type shapes, method signatures, strings, and
+accessibility labels. Match them verbatim (they are case- and punctuation-sensitive).
+
+### Type shapes (exact field names)
+- `WalletSummary`: `{ balanceCents: number; remainingDailyTopUpCents: number }`
+- `TopUpQuote`: `{ amountCents: number; feeCents: number; resultingBalanceCents: number }`
+- `WalletApi`:
+  - `fetchWalletSummary(userId: string): Promise<WalletSummary>`
+  - `createTopUpQuote(userId: string, amountCents: number): Promise<TopUpQuote>`
+  - The screen calls `createTopUpQuote(userId, amountCents)` with those two positional
+    arguments, in that order (e.g. `createTopUpQuote("u1", 1000)` for a `$10.00` top-up).
+
+### `validateTopUpAmount` return strings (exact)
+Return `null` when the amount is valid, otherwise exactly one of:
+- Empty / non-numeric input → any non-empty string (message wording is your choice here).
+- Zero or negative → `"Amount must be greater than $0.00"`
+- Below the `$1.00` minimum → `"Minimum top-up is $1.00"`
+- Above the `$500.00` maximum → `"Maximum single top-up is $500.00"`
+- Above `summary.remainingDailyTopUpCents` → `"Amount exceeds your remaining daily limit"`
+
+### `AddMoneyScreen` — exact on-screen text
+- Loading state (while the summary is pending): `"Loading wallet summary..."`
+- Current balance after load: `"Current balance: $20.00"` — i.e. the literal prefix
+  `"Current balance: "` followed by `formatCents(balanceCents)`.
+- Quote preview fee line: `"Fee: $0.30"` — the literal prefix `"Fee: "` followed by
+  `formatCents(feeCents)`.
+- Quote preview resulting balance line: `"Resulting balance: $29.70"` — the literal prefix
+  `"Resulting balance: "` followed by `formatCents(resultingBalanceCents)`.
+- Balance-load failure: `"Unable to load wallet balance. Please try again."`
+- Quote failure: `"Could not fetch quote. Please try again."`
+- Inline validation text renders the exact `validateTopUpAmount` strings above.
+
+### `AddMoneyScreen` — exact accessibility labels and roles
+The checks query the tree by accessible role and label (not test IDs), so these must be
+reachable by their accessible name:
+- The amount input must be labeled `"Top-up amount"` (e.g. `accessibilityLabel="Top-up amount"`),
+  reachable via `getByLabelText("Top-up amount")`.
+- The primary button must be an accessible **button** named `"Get quote"`
+  (`accessibilityRole="button"`, accessible name `"Get quote"`), reachable via
+  `getByRole("button", { name: "Get quote" })`. It is disabled while the summary is
+  loading, while the amount is invalid, or while a quote request is in flight.
+- The retry control (shown on balance-load failure) must be an accessible **button** named
+  `"Retry"`, reachable via `getByRole("button", { name: "Retry" })`.
+- On a quote failure, the screen keeps the user's typed amount (the input still shows what
+  they typed) and ignores a stale/late quote response for a superseded amount.
+
 ## Deliverable
-Submit the implemented files above with deterministic exports and a working `AddMoneyScreen` that integrates the wallet utilities, API contract, async loading, validation, quote preview, and error handling.
+Submit the implemented files above with deterministic exports and a working `AddMoneyScreen`
+that integrates the wallet utilities, API contract, async loading, validation, quote preview,
+and error handling — matching the exact contract section above.
 
 ## Time box
 Plan for about 60–90 minutes.
